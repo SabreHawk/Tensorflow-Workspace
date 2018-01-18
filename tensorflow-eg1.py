@@ -1,33 +1,41 @@
 import tensorflow as tf
 import numpy as np
+import matplotlib.pyplot as plt
+def add_layer(inputs,in_size,out_size,activation_function = None):
+    Weights = tf.Variable(tf.random_normal([in_size,out_size]))
+    biases = tf.Variable(tf.zeros([1,out_size]))
+    Wx_plus_b = tf.matmul(inputs,Weights) + biases
+    
+    if activation_function is None:
+        outputs = Wx_plus_b
+    else:
+        outputs = activation_function(Wx_plus_b)
+    return outputs
 
-# Create 100 phony x, y data points in NumPy, y = x * 0.1 + 0.3
-x_data = np.random.rand(100).astype(np.float32)
-y_data = x_data * 0.1 + 0.3
 
-# Try to find values for W and b that compute y_data = W * x_data + b
-# (We know that W should be 0.1 and b 0.3, but TensorFlow will
-# figure that out for us.)
-W = tf.Variable(tf.random_uniform([1], -1.0, 1.0))
-b = tf.Variable(tf.zeros([1]))
-y = W * x_data + b
+x_data = np.linspace(-1,1,300, dtype=np.float32)[:, np.newaxis]
+noise = np.random.normal(0, 0.05, x_data.shape).astype(np.float32)
+y_data = np.square(x_data) - 0.5 + noise
 
-# Minimize the mean squared errors.
-loss = tf.reduce_mean(tf.square(y - y_data))
-optimizer = tf.train.GradientDescentOptimizer(0.5)
-train = optimizer.minimize(loss)
+# plot the real data
+fig = plt.figure()
+ax = fig.add_subplot(1,1,1)
+ax.scatter(x_data, y_data)
+plt.ion()#本次运行请注释，全局运行不要注释
+plt.show()
 
-# Before starting, initialize the variables.  We will 'run' this first.
-init = tf.global_variables_initializer()
-
-# Launch the graph.
+xs = tf.placeholder(tf.float32, [None, 1])
+ys = tf.placeholder(tf.float32, [None, 1])
+l1 = add_layer(xs, 1, 10, activation_function=tf.nn.relu)
+prediction = add_layer(l1, 10, 1, activation_function=None)
+loss = tf.reduce_mean(tf.reduce_sum(tf.square(ys - prediction),reduction_indices=[1]))
+train_step = tf.train.GradientDescentOptimizer(0.1).minimize(loss)
+init = tf.global_variables_initializer()  # 替换成这样就好
 sess = tf.Session()
 sess.run(init)
-
-# Fit the line.
-for step in range(201):
-    sess.run(train)
-    if step % 20 == 0:
-        print(step, sess.run(W), sess.run(b))
-
-# Learns best fit is W: [0.1], b: [0.3]
+for i in range(1000):
+    # training
+    sess.run(train_step, feed_dict={xs: x_data, ys: y_data})
+    if i % 50 == 0:
+        # to see the step improvement
+        print(sess.run(loss, feed_dict={xs: x_data, ys: y_data}))
